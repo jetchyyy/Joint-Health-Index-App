@@ -1,0 +1,29 @@
+{
+  "name": "Joint Health Index - The Knee Arthritis & Orthopedic Institute",
+  "short_name": "Joint Health",
+  "description": "Mobile-first offline scoring assessment for joint health, mobility, and knee orthopedic evaluation.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F8FAFC",
+  "theme_color": "#064899",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
