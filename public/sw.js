@@ -1,10 +1,20 @@
-const CACHE_NAME = 'joint-health-v2';
+const CACHE_NAME = 'joint-health-v3';
 const ASSETS_TO_CACHE = [
   '/',
-  '/index.html',
   '/manifest.webmanifest',
   '/icon.svg'
 ];
+
+// Reconstruct response to strip internal WebKit redirect flags
+// that cause Safari "Response served by service worker has redirections" error
+function stripRedirect(response) {
+  if (!response) return response;
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers
+  });
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -40,20 +50,29 @@ self.addEventListener('fetch', (event) => {
   // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;
 
-  // For navigation requests (page loads), serve index.html directly from cache
-  // This prevents redirect chains that break Safari standalone PWA mode
+  // For navigation requests (page loads / document visits)
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('/index.html').then((cached) => {
-        if (cached) return cached;
-        return fetch('/index.html').then((response) => {
-          if (response && response.status === 200 && response.type === 'basic') {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put('/index.html', clone));
+      (async () => {
+        try {
+          // Network-first for navigation so users always get fresh content when online
+          const networkResponse = await fetch(event.request);
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            const cache = await caches.open(CACHE_NAME);
+            cache.put('/', clone);
+            return stripRedirect(networkResponse);
           }
-          return response;
-        });
-      })
+          return stripRedirect(networkResponse);
+        } catch {
+          // Offline fallback: serve cached root '/'
+          const cached = await caches.match('/');
+          if (cached) {
+            return stripRedirect(cached);
+          }
+          return new Response('Offline', { status: 503, statusText: 'Offline' });
+        }
+      })()
     );
     return;
   }
@@ -96,7 +115,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // Offline fallback for HTML requests
           if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/index.html');
+            return caches.match('/').then(stripRedirect);
           }
         });
     })
